@@ -1,101 +1,182 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+import { useState, useEffect } from "react";
+import axios from "axios";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { ClipLoader } from "react-spinners"; // Import react-spinners
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+export default function CrawlPage() {
+    const [url, setUrl] = useState("");
+    const [markdownContent, setMarkdownContent] = useState("");
+    const [savedFiles, setSavedFiles] = useState<string[]>([]);
+    const [selectedFile, setSelectedFile] = useState("");
+    const [progress, setProgress] = useState(0);
+    const [log, setLog] = useState<string[]>([]);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [scrapeEntireSite, setScrapeEntireSite] = useState(false);
+    const [loading, setLoading] = useState(false); // Loading state for spinner
+    const [pageCount, setPageCount] = useState(0); // Counter for pages scraped
+
+    // Load saved files from localStorage
+    useEffect(() => {
+        const storedFiles = JSON.parse(localStorage.getItem('savedFiles') || '[]');
+        setSavedFiles(storedFiles);
+    }, []);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            setProgress(0);
+            setLog([]);
+            setMarkdownContent("");
+            setErrorMessage(null);
+            setLoading(true); // Start loading spinner
+            setPageCount(0); // Reset page counter
+
+            const response = await axios.post("/api/crawl", { url, scrapeEntireSite });
+
+            const markdown = response.data.markdown;
+            const totalPagesScraped = response.data.pageCount; // Get the page count from the response
+
+            setPageCount(totalPagesScraped); // Set the page count
+
+            // Save to localStorage
+            const fileName = url.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+            localStorage.setItem(fileName, markdown);
+            const newSavedFiles = [...savedFiles, fileName];
+            setSavedFiles(newSavedFiles);
+            localStorage.setItem('savedFiles', JSON.stringify(newSavedFiles));
+
+            setMarkdownContent(markdown);
+            setLog((prevLog) => [...prevLog, `Crawling completed for ${url}, Pages scraped: ${totalPagesScraped}`]);
+        } catch (error) {
+            setErrorMessage("Unable to read markdown content.");
+            setLog((prevLog) => [
+                ...prevLog,
+                `Error scraping: ${error instanceof Error ? error.message : "Unknown error"}`,
+            ]);
+        } finally {
+            setLoading(false); // Stop loading spinner
+        }
+    };
+
+    const handleFileSelect = (file: string) => {
+        const markdown = localStorage.getItem(file);
+        if (markdown) {
+            setMarkdownContent(markdown);
+            setSelectedFile(file);
+            setErrorMessage(null);
+        } else {
+            setErrorMessage("Unable to read markdown content.");
+        }
+    };
+
+    return (
+        <div
+            className="min-h-screen p-6"
+            style={{ 
+              backgroundImage: 'url("/gradient-image.svg")',
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+            }}
+        >
+            <h1 className="text-3xl font-extrabold text-center mb-6 text-white">Markdown Crawler</h1>
+
+            <form onSubmit={handleSubmit} className="flex flex-col items-center mb-6 space-y-4">
+                <Input
+                    id="url"
+                    placeholder="Enter URL"
+                    value={url}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setUrl(e.target.value)}
+                    className="w-full max-w-md"
+                    required
+                />
+
+                <div className="flex items-center space-x-3">
+                    <label htmlFor="scrapeSite" className="text-white">Scrape Entire Site</label>
+                    <Switch
+                        id="scrapeSite"
+                        checked={scrapeEntireSite}
+                        onCheckedChange={() => setScrapeEntireSite(!scrapeEntireSite)} 
+                    />
+                </div>
+
+                <Button type="submit" className="w-full max-w-md">Crawl and Convert to Markdown</Button>
+            </form>
+
+            {loading && (
+                <div className="flex justify-center mb-6">
+                    <ClipLoader color={"#ffffff"} loading={loading} size={50} />
+                </div>
+            )}
+
+            {progress > 0 && (
+                <Progress value={progress} className="w-full max-w-md mx-auto mb-6" />
+            )}
+
+            {/* Page scrape counter */}
+            <p className="text-white text-center">20 page limit per request</p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Saved Markdown Files</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <ScrollArea className="h-64">
+                            <ul className="space-y-2">
+                                {savedFiles.map((file) => (
+                                    <li key={file}>
+                                        <Button
+                                            variant={file === selectedFile ? "outline" : "ghost"}
+                                            onClick={() => handleFileSelect(file)}
+                                            className="w-full text-left"
+                                        >
+                                            {file}
+                                        </Button>
+                                    </li>
+                                ))}
+                            </ul>
+                        </ScrollArea>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Markdown Content</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        {errorMessage ? (
+                            <p className="text-red-500">{errorMessage}</p>
+                        ) : markdownContent ? (
+                            <ScrollArea className="h-64">
+                                <pre className="whitespace-pre-wrap">{markdownContent}</pre>
+                            </ScrollArea>
+                        ) : (
+                            <p className="text-gray-500">Select a file to view its content</p>
+                        )}
+                    </CardContent>
+                </Card>
+            </div>
+
+            {log.length > 0 && (
+                <div className="mt-6">
+                    <h2 className="text-xl font-bold mb-2 text-white">Operation Log</h2>
+                    <ul className="space-y-1">
+                        {log.map((logEntry, index) => (
+                            <li key={index}>
+                                <Badge variant="outline">{logEntry}</Badge>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
-  );
+    );
 }
