@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { ClipLoader } from "react-spinners"; // Import react-spinners
+import { ClipLoader } from "react-spinners"; 
 
 export default function CrawlPage() {
     const [url, setUrl] = useState("");
