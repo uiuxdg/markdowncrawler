@@ -3,7 +3,7 @@
 
 ## Overview
 
-The Markdown Crawler is a web application that allows you to scrape web pages and convert their content into Markdown files. You can choose to scrape an entire website or just a specific page. The converted files can be downloaded.
+The Markdown Crawler is a web application that allows you to scrape web pages and convert their primary content into Markdown files. You can choose to scrape an entire website or just a specific page. The converted files can be downloaded. The inital intended use case was for LLM agents in a RAG (Retrieval Augmented Generation) pipeline to access Wiki pages and developer docs and extract purely semantic content without the unnecessary html/css/js and links being included in the result, however this version has been adapted for a web UI. 
 
 ## Features
 
