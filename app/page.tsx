@@ -22,6 +22,8 @@ export default function CrawlPage() {
     const [scrapeEntireSite, setScrapeEntireSite] = useState(false);
     const [loading, setLoading] = useState(false); // Loading state for spinner
     const [pageCount, setPageCount] = useState(0); // Counter for pages scraped
+    const [selectedFiles, setSelectedFiles] = useState<string[]>([]); // For file selection
+    const [selectAll, setSelectAll] = useState(false); // Select all state
 
     // Load saved files from localStorage
     useEffect(() => {
@@ -29,6 +31,7 @@ export default function CrawlPage() {
         setSavedFiles(storedFiles);
     }, []);
 
+    // Handle form submission for scraping
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
@@ -66,6 +69,7 @@ export default function CrawlPage() {
         }
     };
 
+    // Handle file selection from the list
     const handleFileSelect = (file: string) => {
         const markdown = localStorage.getItem(file);
         if (markdown) {
@@ -75,6 +79,37 @@ export default function CrawlPage() {
         } else {
             setErrorMessage("Unable to read markdown content.");
         }
+    };
+
+    // Handle individual checkbox click
+    const handleCheckboxChange = (file: string) => {
+        setSelectedFiles(prev => 
+            prev.includes(file) ? prev.filter(f => f !== file) : [...prev, file]
+        );
+    };
+
+    // Handle Select All checkbox
+    const handleSelectAll = () => {
+        setSelectAll(!selectAll);
+        if (!selectAll) {
+            setSelectedFiles(savedFiles); // Select all files
+        } else {
+            setSelectedFiles([]); // Deselect all files
+        }
+    };
+
+    // Handle file downloads
+    const handleDownload = () => {
+        selectedFiles.forEach((file) => {
+            const markdown = localStorage.getItem(file);
+            if (markdown) {
+                const blob = new Blob([markdown], { type: "text/markdown" });
+                const link = document.createElement("a");
+                link.href = URL.createObjectURL(blob);
+                link.download = `${file}.md`;
+                link.click();
+            }
+        });
     };
 
     return (
@@ -91,7 +126,7 @@ export default function CrawlPage() {
             <form onSubmit={handleSubmit} className="flex flex-col items-center mb-6 space-y-4">
                 <Input
                     id="url"
-                    placeholder="Enter URL"
+                    placeholder="Enter URL (e.g. https://example.com)"
                     value={url}
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => setUrl(e.target.value)}
                     className="w-full max-w-md"
@@ -99,7 +134,7 @@ export default function CrawlPage() {
                 />
 
                 <div className="flex items-center space-x-3">
-                    <label htmlFor="scrapeSite" className="text-white">Scrape Entire Site</label>
+                    <label htmlFor="scrapeSite" className="text-white">Scrape Entire Site (Up to 20 pages)</label>
                     <Switch
                         id="scrapeSite"
                         checked={scrapeEntireSite}
@@ -121,18 +156,31 @@ export default function CrawlPage() {
             )}
 
             {/* Page scrape counter */}
-            <p className="text-white text-center">20 page limit per request</p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card>
+                <Card className="h-96">
                     <CardHeader>
                         <CardTitle>Saved Markdown Files</CardTitle>
+                        <div className="flex items-center justify-start space-x-2">
+                            <input
+                                type="checkbox"
+                                id="selectAll"
+                                checked={selectAll}
+                                onChange={handleSelectAll}
+                            />
+                            <label htmlFor="selectAll" className="text-white">Select All</label>
+                        </div>
                     </CardHeader>
                     <CardContent>
-                        <ScrollArea className="h-64">
+                        <ScrollArea className="min-h-48">
                             <ul className="space-y-2">
                                 {savedFiles.map((file) => (
-                                    <li key={file}>
+                                    <li key={file} className="flex items-center space-x-3">
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedFiles.includes(file)}
+                                            onChange={() => handleCheckboxChange(file)}
+                                        />
                                         <Button
                                             variant={file === selectedFile ? "outline" : "ghost"}
                                             onClick={() => handleFileSelect(file)}
@@ -145,6 +193,11 @@ export default function CrawlPage() {
                             </ul>
                         </ScrollArea>
                     </CardContent>
+                    <div className="flex items-center justify-center w-full">
+                        <Button className="m-4" onClick={handleDownload} disabled={selectedFiles.length === 0}>
+                            Download Selected
+                    </Button>
+                    </div>
                 </Card>
 
                 <Card>
@@ -155,7 +208,7 @@ export default function CrawlPage() {
                         {errorMessage ? (
                             <p className="text-red-500">{errorMessage}</p>
                         ) : markdownContent ? (
-                            <ScrollArea className="h-64">
+                            <ScrollArea className="h-72 ">
                                 <pre className="whitespace-pre-wrap">{markdownContent}</pre>
                             </ScrollArea>
                         ) : (
