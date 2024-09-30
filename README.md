@@ -3,7 +3,7 @@
 
 ## Overview
 
-The Markdown Crawler is a web application that allows you to scrape web pages and convert their content into Markdown files. You can choose to scrape an entire website or just a specific page. The app uses the Next.js framework, TailwindCSS for styling, and Shadcn UI components for an improved user experience. It also supports downloading selected scraped Markdown files from local storage.
+The Markdown Crawler is a web application that allows you to scrape web pages and convert their content into Markdown files. You can choose to scrape an entire website or just a specific page. The converted files can be downloaded.
 
 ## Features
 
